@@ -13,3 +13,4 @@ class Product(Base):
     name: Mapped[str] = mapped_column(String(100))
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     stock_quantity: Mapped[int] = mapped_column(Integer)
+    reserved_quantity: Mapped[int] = mapped_column(Integer, default=0, server_default='0')

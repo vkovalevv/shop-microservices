@@ -7,7 +7,8 @@ from ..database import get_session
 from ..models import Order, OrderItem
 from ..schemas import OrderCreate, OrderRead
 from ..clients.products import get_products_client, ProductsClient
-
+from ..messaging.events import OrderItemEvent, OrderCreatedEvent
+from ..messaging.broker import broker
 router = APIRouter(prefix='/orders', tags=['orders'])
 
 
@@ -43,4 +44,14 @@ async def create_order(
     db.add(order)
     await db.commit()
     await db.refresh(order)
+
+    event = OrderCreatedEvent(
+        order_id=order.id,
+        items=[
+            OrderItemEvent(product_id=item.id, quantity=item.quantity)
+            for item in order.items
+        ]
+    )
+
+    await broker.publish('order.created', event.model_dump())
     return order

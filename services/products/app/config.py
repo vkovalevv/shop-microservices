@@ -3,6 +3,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     database_url: str
+    rabbitmq_url: str
 
     model_config = SettingsConfigDict(env_file='.env')
 

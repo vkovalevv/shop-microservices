@@ -15,3 +15,4 @@ class ProductRead(BaseModel):
     name: str
     price: Decimal
     stock_quantity: int
+    reserved_quantity: int

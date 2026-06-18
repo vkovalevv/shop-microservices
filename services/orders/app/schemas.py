@@ -34,7 +34,7 @@ class OrderRead(BaseModel):
 
 class ProductInfo(BaseModel):
     id: int
-    name: str 
+    name: str
     price: Decimal
     stock_quantity: int
-    
+    reserved_quantity: int
