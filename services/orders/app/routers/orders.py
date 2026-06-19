@@ -28,7 +28,7 @@ async def create_order(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail='Product not found')
 
-        if product.stock_quantity < item.quantity:
+        if product.stock_quantity - product.reserved_quantity < item.quantity:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail='Not enough stock quantity'
             )
@@ -48,7 +48,7 @@ async def create_order(
     event = OrderCreatedEvent(
         order_id=order.id,
         items=[
-            OrderItemEvent(product_id=item.id, quantity=item.quantity)
+            OrderItemEvent(product_id=item.product_id, quantity=item.quantity)
             for item in order.items
         ]
     )

@@ -4,7 +4,7 @@ from aio_pika import ExchangeType
 
 from ..config import get_settings
 
-EXCHANGE_NAME = 'shop.events'
+EXCHANGE_NAME = "shop.events"
 
 
 class Broker:
@@ -25,11 +25,12 @@ class Broker:
             await self._connection.close()
 
     async def publish(self, routing_key: str, body: dict) -> None:
-        assert self._exchange is not None, 'Broker is not connected'
+        assert self._exchange is not None, "Broker is not connected"
         message = aio_pika.Message(
             body=json.dumps(body).encode(),
-            delivery_mode=aio_pika.DeliveryMode.PERSISTENT
+            delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
         )
         await self._exchange.publish(message, routing_key=routing_key)
+
 
 broker = Broker()
