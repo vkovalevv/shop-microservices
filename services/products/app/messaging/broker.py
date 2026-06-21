@@ -19,17 +19,18 @@ class Broker:
     def __init__(self):
         self._connection: aio_pika.abc.AbstractConnection | None = None
         self._channel: aio_pika.abc.AbstractChannel | None = None
+        self._exchange: aio_pika.abc.AbstractExchange | None = None
 
     async def connect(self):
         self._connection = await aio_pika.connect_robust(get_settings().rabbitmq_url)
         self._channel = await self._connection.channel()
         await self._channel.set_qos(prefetch_count=10)
 
-        exchange = await self._channel.declare_exchange(
+        self._exchange = await self._channel.declare_exchange(
             EXCHANGE_NAME, ExchangeType.TOPIC, durable=True
         )
         queue = await self._channel.declare_queue(QUEUE_NAME, durable=True)
-        await queue.bind(exchange=exchange, routing_key=ROUTING_KEY)
+        await queue.bind(exchange=self._exchange, routing_key=ROUTING_KEY)
 
         await queue.consume(self._on_message)
 
@@ -61,10 +62,15 @@ class Broker:
                 
                 if all_reserved:
                     await session.commit()
-                    print(f'Order {event.order_id}: зарезервирован полностью')
+                    await self.publish('stock.reserved', {'order_id':event.order_id})
                 else:
                     await session.rollback()
-                    print(f'Order {event.order_id}: не удалось зарезервировать')
+                    await self.publish('stock.reservation_failed', {'order_id': event.order_id})
 
+    async def publish(self, routing_key: str, body:dict):
+        assert self._exchange is not None
+        message = aio_pika.Message(body=json.dumps(body).encode(),
+                                   delivery_mode=aio_pika.DeliveryMode.PERSISTENT)
+        await self._exchange.publish(message, routing_key=routing_key)    
 
 broker = Broker()
