@@ -47,6 +47,7 @@ async def create_order(
 
     event = OrderCreatedEvent(
         order_id=order.id,
+        total_amount=total,
         items=[
             OrderItemEvent(product_id=item.product_id, quantity=item.quantity)
             for item in order.items

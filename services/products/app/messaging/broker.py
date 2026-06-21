@@ -62,14 +62,14 @@ class Broker:
                 
                 if all_reserved:
                     await session.commit()
-                    await self.publish('stock.reserved', {'order_id':event.order_id})
+                    await self.publish('stock.reserved', {'order_id':event.order_id,'total_amount':event.total_amount})
                 else:
                     await session.rollback()
-                    await self.publish('stock.reservation_failed', {'order_id': event.order_id})
+                    await self.publish('stock.reservation_failed', {'order_id': event.order_id, 'total_amount': event.total_amount})
 
     async def publish(self, routing_key: str, body:dict):
         assert self._exchange is not None
-        message = aio_pika.Message(body=json.dumps(body).encode(),
+        message = aio_pika.Message(body=json.dumps(body, default=str).encode(),
                                    delivery_mode=aio_pika.DeliveryMode.PERSISTENT)
         await self._exchange.publish(message, routing_key=routing_key)    
 

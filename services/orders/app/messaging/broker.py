@@ -27,7 +27,7 @@ class Broker:
     async def publish(self, routing_key: str, body: dict) -> None:
         assert self._exchange is not None, "Broker is not connected"
         message = aio_pika.Message(
-            body=json.dumps(body).encode(),
+            body=json.dumps(body, default=str).encode(),
             delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
         )
         await self._exchange.publish(message, routing_key=routing_key)

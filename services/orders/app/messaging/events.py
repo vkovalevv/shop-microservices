@@ -8,5 +8,6 @@ class OrderItemEvent(BaseModel):
 
 class OrderCreatedEvent(BaseModel):
     order_id: int 
+    total_amount: Decimal
     items: list[OrderItemEvent]
     
