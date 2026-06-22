@@ -1,0 +1,85 @@
+services:
+  products-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: shop
+      POSTGRES_DB: products
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U shop -d products" ]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  orders-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: orders
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: shop
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U shop -d orders" ]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  payments-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: payments
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: shop
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U shop -d payments" ]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  products:
+    build: ./services/products
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://shop:shop@products-db:5432/products
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      products-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  orders:
+    build: ./services/orders
+    ports:
+      - "8001:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://shop:shop@orders-db:5432/orders
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      PRODUCTS_SERVICE_URL: http://products:8000
+    depends_on:
+      products:
+        condition: service_started
+      orders-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+  payments:
+    build: ./services/payments
+    environment:
+      DATABASE_URL: postgresql+asyncpg://shop:shop@payments-db:5432/payments
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      payments-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
