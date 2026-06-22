@@ -1,9 +1,13 @@
 import json
+
 import aio_pika
 from aio_pika import ExchangeType
+from aio_pika.abc import AbstractIncomingMessage
+from sqlalchemy import update
 
+from ..models import Order
 from ..config import get_settings
-
+from ..database import async_session_maker
 EXCHANGE_NAME = "shop.events"
 
 
@@ -19,6 +23,39 @@ class Broker:
         self._exchange = await self._channel.declare_exchange(
             EXCHANGE_NAME, ExchangeType.TOPIC, durable=True
         )
+
+        payment_completed_queue = await self._channel.declare_queue('orders.payment_completed', durable=True)
+        await payment_completed_queue.bind(self._exchange, routing_key='payment.completed')
+        await payment_completed_queue.consume(self._payment_completed)
+
+        payment_failed_queue = await self._channel.declare_queue('orders.payment_failed', durable=True)
+        await payment_failed_queue.bind(self._exchange, routing_key='payment.failed')
+        await payment_failed_queue.consume(self._payment_failed)
+    
+    async def _payment_completed(self, message: AbstractIncomingMessage):
+        async with message.process():
+            payload = json.loads(message.body)
+            order_id = payload['order_id']
+            async with async_session_maker() as session: 
+                await session.execute(
+                    update(Order)
+                    .where(Order.id == order_id)
+                    .values(status = 'paid')
+                )
+
+                await session.commit()
+
+    async def _payment_failed(self, message: AbstractIncomingMessage):
+        async with message.process():
+            payload = json.loads(message.body)
+            order_id = payload['order_id']
+            async with async_session_maker() as session:
+                await session.execute(
+                    update(Order)
+                    .where(Order.id == order_id)
+                    .values(status = 'cancelled')
+                )
+                await session.commit()
 
     async def close(self) -> None:
         if self._connection is not None:
